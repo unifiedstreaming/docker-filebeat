@@ -9,11 +9,11 @@ if [ "$1" = 'start' ]; then
   setConfiguration() {
     KEY=$1
     VALUE=$2
-    sed -i "s/{{$KEY}}/$VALUE/g" ${FILEBEAT_HOME}/filebeat.yml
+    sed -i "s/{{$KEY}}/$VALUE/g" /opt/${FILEBEAT_HOME}/filebeat.yml
   }
 
   getRunningContainers() {
-    curl --no-buffer -s -XGET --unix-socket /tmp/docker.sock http:/containers/json | python -c "
+    curl --no-buffer -s -XGET --unix-socket /tmp/docker.sock http:/dummy/containers/json | python -c "
 import json, sys
 containers=json.loads(sys.stdin.readline())
 for container in containers:
@@ -22,7 +22,7 @@ for container in containers:
   }
 
   getContainerName() {
-    curl --no-buffer -s -XGET --unix-socket /tmp/docker.sock http:/containers/$1/json | python -c "
+    curl --no-buffer -s -XGET --unix-socket /tmp/docker.sock http:/dummy/containers/$1/json | python -c "
 import json, sys
 container=json.loads(sys.stdin.readline())
 print(container['Name'])
@@ -42,7 +42,7 @@ print(container['Name'])
     echo "Processing $CONTAINER..."
     createContainerFile $CONTAINER
     CONTAINER_NAME=`getContainerName $CONTAINER`
-    curl -s --no-buffer -XGET --unix-socket /tmp/docker.sock "http:/containers/$CONTAINER/logs?stderr=1&stdout=1&tail=1&follow=1" | sed "s;^;[$CONTAINER_NAME] ;" > $NAMED_PIPE
+    curl -s --no-buffer -XGET --unix-socket /tmp/docker.sock "http:/dummy/containers/$CONTAINER/logs?stderr=1&stdout=1&tail=1&follow=1" | sed "s;^;[$CONTAINER_NAME] ;" > $NAMED_PIPE
     echo "Disconnected from $CONTAINER."
     removeContainerFile $CONTAINER
   }
@@ -73,12 +73,13 @@ print(container['Name'])
   mkfifo -m a=rw "$NAMED_PIPE"
 
   echo "Initializing Filebeat..."
-  cat $NAMED_PIPE | ${FILEBEAT_HOME}/filebeat -e -v &
+  cd ${FILEBEAT_HOME}; cat $NAMED_PIPE | ./filebeat -e -v &
 
   while true; do
     CONTAINERS=`getRunningContainers`
     for CONTAINER in $CONTAINERS; do
       if ! ls $CONTAINERS_FOLDER | grep -q $CONTAINER; then
+        echo $CONTAINER
         collectContainerLogs $CONTAINER &
       fi
     done
