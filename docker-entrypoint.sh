@@ -42,7 +42,10 @@ print(container['Name'])
     echo "Processing $CONTAINER..."
     createContainerFile $CONTAINER
     CONTAINER_NAME=`getContainerName $CONTAINER`
-    curl -s --no-buffer -XGET --unix-socket /tmp/docker.sock "http:/dummy/containers/$CONTAINER/logs?stderr=1&stdout=1&tail=1&follow=1" | sed "s;^;[$CONTAINER_NAME] ;" > $NAMED_PIPE
+
+    # Prepend container name and filter lines too short. Use stdbuf -o0 in
+    # sed, not sure it's really needed.
+    curl -s --no-buffer -XGET --unix-socket /tmp/docker.sock "http:/dummy/containers/$CONTAINER/logs?stderr=1&stdout=1&tail=1&follow=1" | stdbuf -o0 sed -E "s;^;[$CONTAINER_NAME] ;" > $NAMED_PIPE-$CONTAINER_NAME
     echo "Disconnected from $CONTAINER."
     removeContainerFile $CONTAINER
   }
@@ -68,19 +71,23 @@ print(container['Name'])
   fi
 
   rm -rf "$CONTAINERS_FOLDER"
-  rm -rf "$NAMED_PIPE"
   mkdir "$CONTAINERS_FOLDER"
-  mkfifo -m a=rw "$NAMED_PIPE"
 
-  echo "Initializing Filebeat..."
-  cd ${FILEBEAT_HOME}; cat $NAMED_PIPE | ./filebeat -e -v &
+  #echo "Initializing Filebeat..."
+  #cd /opt/${FILEBEAT_HOME}; cat $NAMED_PIPE | ./filebeat -e -v &
 
   while true; do
     CONTAINERS=`getRunningContainers`
     for CONTAINER in $CONTAINERS; do
       if ! ls $CONTAINERS_FOLDER | grep -q $CONTAINER; then
         echo $CONTAINER
+        CONTAINER_NAME=`getContainerName $CONTAINER`
+        rm -rf "$NAMED_PIPE-$CONTAINER_NAME"
+        mkfifo -m a=rw "$NAMED_PIPE-$CONTAINER_NAME"
         collectContainerLogs $CONTAINER &
+        
+        echo "Initializing Filebeat..."
+        cd /opt/${FILEBEAT_HOME}; ./filebeat -e -v < $NAMED_PIPE-$CONTAINER_NAME &
       fi
     done
     sleep 5

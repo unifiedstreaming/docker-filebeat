@@ -204,9 +204,6 @@ output.logstash:
 processors:
   - add_host_metadata:
       when.not.contains.tags: forwarded
-  - add_cloud_metadata: ~
-  - add_docker_metadata: ~
-  - add_kubernetes_metadata: ~
 
 # ================================== Logging ===================================
 
@@ -225,7 +222,12 @@ processors:
 # reporting is disabled by default.
 
 # Set to true to enable the monitoring reporter.
-#monitoring.enabled: false
+
+# USP Notice: it seems this feature (filebeat self-monitoring for CPU and
+# and memory usage) is a bit bugged and when running in a docker container,
+# it fails to retrieve its own pid, generating lots of ERROR logs that have
+# nothing to do with filebeat otherwise being perfectly able to do its job.
+logging.metrics.enabled: false
 
 # Sets the UUID of the Elasticsearch cluster under which monitoring data for this
 # Filebeat instance will appear in the Stack Monitoring UI. If output.elasticsearch

@@ -1,9 +1,9 @@
 filebeat:
-  image: bargenson/filebeat:latest
+  image: unifiedstreaming/filebeat-for-docker:7.3.2-logstash
   restart: unless-stopped
   volumes:
    - /var/run/docker.sock:/tmp/docker.sock
   environment:
-   - LOGSTASH_HOST=logstash.localdomain
+   - LOGSTASH_HOST=validator-dockers-logstash.logstash.svc.k8s.unified-streaming.com
    - LOGSTASH_PORT=5044
-   - SHIPPER_NAME=aWonderfulName
+   - SHIPPER_NAME=validator-filebeat

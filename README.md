@@ -57,7 +57,7 @@ In order to have a `containerName` field and a cleaned `message` field, you have
 ```
 filter {
 
-  if [type] == "filebeat-docker-logs" {
+  if [fields][document_type] == "filebeat-docker-logs" {
 
     grok {
       match => { 
